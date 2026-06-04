@@ -33,12 +33,30 @@ jobs:
           cd ios
           WORKSPACE_NAME=$(ls -d *.xcworkspace | head -n 1)
           SCHEME_NAME=$(basename "$WORKSPACE_NAME" .xcworkspace)
-          xcodebuild -workspace "$WORKSPACE_NAME" -scheme "$SCHEME_NAME" -configuration Release -sdk iphoneos -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CODE_SIGN_ENTITLEMENTS="" clean build
+          
+          # O '-quiet' impede que o excesso de logs trave o GitHub Actions
+          xcodebuild -workspace "$WORKSPACE_NAME" \
+            -scheme "$SCHEME_NAME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            -quiet \
+            clean build
 
       - name: Package IPA
         run: |
           mkdir -p Payload
-          cp -r ios/build/Build/Products/Release-iphoneos/*.app Payload/ || true
+          # Procura dinamicamente o arquivo .app gerado para evitar erro de caminho fixo
+          APP_PATH=$(find ios/build/Build/Products/Release-iphoneos -name "*.app" | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Erro: Aplicativo .app nao encontrado!"
+            exit 1
+          fi
+          cp -r "$APP_PATH" Payload/
           zip -r app-puro.ipa Payload
           rm -rf Payload
 
