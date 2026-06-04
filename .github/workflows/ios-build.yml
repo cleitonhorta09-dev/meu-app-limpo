@@ -28,29 +28,29 @@ jobs:
           echo "export NODE_BINARY=$(which node)" > ios/.xcode.env
           echo "export EXPO_OFFLINE=1" >> ios/.xcode.env
 
+      - name: Bypass Xcode Code Signing
+        run: |
+          # Instala e aplica a ferramenta que remove a obrigatoriedade de assinatura do compilador do Mac
+          npm install -g xcode-no-sign
+          xcode-no-sign
+
       - name: Build Local IPA
         run: |
           cd ios
           WORKSPACE_NAME=$(ls -d *.xcworkspace | head -n 1)
           SCHEME_NAME=$(basename "$WORKSPACE_NAME" .xcworkspace)
           
-          # O '-quiet' impede que o excesso de logs trave o GitHub Actions
           xcodebuild -workspace "$WORKSPACE_NAME" \
             -scheme "$SCHEME_NAME" \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGN_ENTITLEMENTS="" \
             -quiet \
             clean build
 
       - name: Package IPA
         run: |
           mkdir -p Payload
-          # Procura dinamicamente o arquivo .app gerado para evitar erro de caminho fixo
           APP_PATH=$(find ios/build/Build/Products/Release-iphoneos -name "*.app" | head -n 1)
           if [ -z "$APP_PATH" ]; then
             echo "Erro: Aplicativo .app nao encontrado!"
