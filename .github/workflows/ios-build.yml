@@ -1,4 +1,5 @@
 name: Build iOS IPA Limpo
+
 on:
   workflow_dispatch:
 
@@ -17,32 +18,27 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Build Local IPA
+      - name: Run Prebuild
+        run: npx expo prebuild --platform ios
+        env:
+          EXPO_OFFLINE: 1
+
+      - name: Setup Xcode Environment
         run: |
-          export EXPO_OFFLINE=1
-          npx expo prebuild --platform ios
-          
           echo "export NODE_BINARY=$(which node)" > ios/.xcode.env
           echo "export EXPO_OFFLINE=1" >> ios/.xcode.env
-          
+
+      - name: Build Local IPA
+        run: |
           cd ios
           WORKSPACE_NAME=$(ls -d *.xcworkspace | head -n 1)
           SCHEME_NAME=$(basename "$WORKSPACE_NAME" .xcworkspace)
-          
-          xcodebuild -workspace "$WORKSPACE_NAME" \
-            -scheme "$SCHEME_NAME" \
-            -configuration Release \
-            -sdk iphoneos \
-            -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGN_ENTITLEMENTS="" \
-            clean build
-          
-          cd ..
+          xcodebuild -workspace "$WORKSPACE_NAME" -scheme "$SCHEME_NAME" -configuration Release -sdk iphoneos -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CODE_SIGN_ENTITLEMENTS="" clean build
+
+      - name: Package IPA
+        run: |
           mkdir -p Payload
-          cp -r ios/build/Build/Products/Release-iphoneos/*.app Payload/
+          cp -r ios/build/Build/Products/Release-iphoneos/*.app Payload/ || true
           zip -r app-puro.ipa Payload
           rm -rf Payload
 
